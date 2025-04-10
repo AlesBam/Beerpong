@@ -1,10 +1,14 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Box,
   Button,
   Typography,
   Paper,
   Divider,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from '@mui/material';
 import { Match, Player } from '../types';
 
@@ -13,9 +17,25 @@ interface MatchPlayProps {
   onBack: () => void;
   onShot: (playerIndex: number, result: 'hit' | 'miss') => void;
   onUndo: () => void;
+  onReset: () => void;
 }
 
-const MatchPlay: React.FC<MatchPlayProps> = ({ match, onBack, onShot, onUndo }) => {
+const MatchPlay: React.FC<MatchPlayProps> = ({ match, onBack, onShot, onUndo, onReset }) => {
+  const [resetDialogOpen, setResetDialogOpen] = useState(false);
+
+  const handleResetClick = () => {
+    setResetDialogOpen(true);
+  };
+
+  const handleResetConfirm = () => {
+    setResetDialogOpen(false);
+    onReset();
+  };
+
+  const handleResetCancel = () => {
+    setResetDialogOpen(false);
+  };
+
   const handleHit = (playerIndex: number) => {
     onShot(playerIndex, 'hit');
   };
@@ -72,44 +92,49 @@ const MatchPlay: React.FC<MatchPlayProps> = ({ match, onBack, onShot, onUndo }) 
   console.log('Team 1 Players:', team1Players);
   console.log('Team 2 Players:', team2Players);
 
-  const renderTeam = (players: Player[], startIndex: number, teamNumber: number, teamStats: { hits: number; total: number; accuracy: number }) => {
-    console.log(`Rendering Team ${teamNumber}:`, players);
-    return (
+  const renderTeam = (players: Player[], startIndex: number, teamNumber: number, teamStats: { hits: number; total: number; accuracy: number }) => (
     <Box sx={{ flex: 1 }}>
-      <Box sx={{ textAlign: 'center', mb: 3 }}>
+      <Box sx={{ textAlign: 'center', mb: 2 }}>
         <Typography variant="h5" gutterBottom>
           Team {teamNumber}
         </Typography>
-        <Typography variant="body1" color="text.secondary">
-          Team Stats: {teamStats.hits} hits | {teamStats.total} shots | {teamStats.accuracy.toFixed(1)}% accuracy
+        <Typography variant="body2" color="text.secondary">
+          Team Stats: {teamStats.hits} hits | {teamStats.total} shots | {teamStats.accuracy.toFixed(1)}%
         </Typography>
       </Box>
       <Box sx={{ 
-        display: 'grid', 
-        gridTemplateColumns: { 
-          xs: '1fr', 
-          sm: playersPerTeam === 1 ? '1fr' : 'repeat(2, 1fr)',
-          md: playersPerTeam === 1 ? '1fr' : playersPerTeam === 2 ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)'
-        },
-        gap: 2 
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 2
       }}>
         {players.map((player, index) => {
           const playerIndex = startIndex + index;
           const stats = getPlayerStats(playerIndex);
-          console.log(`Rendering player ${playerIndex}:`, player);
           return (
-            <Box key={playerIndex} sx={{ p: 2, border: '1px solid', borderColor: 'divider', borderRadius: 1 }}>
-              <Typography variant="h6" gutterBottom>
+            <Box 
+              key={playerIndex} 
+              sx={{ 
+                p: 1.5,
+                border: '1px solid',
+                borderColor: 'divider',
+                borderRadius: 1,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 1
+              }}
+            >
+              <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
                 {player.name}
               </Typography>
-              <Typography variant="body2" color="text.secondary" gutterBottom>
-                Hits: {stats.hits} | Total: {stats.total} | Accuracy: {stats.accuracy.toFixed(1)}%
+              <Typography variant="body2" color="text.secondary">
+                Hits: {stats.hits} | Total: {stats.total} | {stats.accuracy.toFixed(1)}%
               </Typography>
-              <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', mt: 1 }}>
+              <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
                 <Button
                   variant="contained"
                   color="success"
                   onClick={() => handleHit(playerIndex)}
+                  size="small"
                 >
                   Hit
                 </Button>
@@ -117,6 +142,7 @@ const MatchPlay: React.FC<MatchPlayProps> = ({ match, onBack, onShot, onUndo }) 
                   variant="contained"
                   color="error"
                   onClick={() => handleMiss(playerIndex)}
+                  size="small"
                 >
                   Miss
                 </Button>
@@ -126,61 +152,91 @@ const MatchPlay: React.FC<MatchPlayProps> = ({ match, onBack, onShot, onUndo }) 
         })}
       </Box>
     </Box>
-  )};
+  );
 
   return (
-    <Paper elevation={3} sx={{ p: 4 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
+    <Paper elevation={3} sx={{ p: 2 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
         <Typography variant="h4">
           Beer Pong Counter
         </Typography>
-        <Button
-          variant="contained"
-          color="warning"
-          onClick={onUndo}
-          disabled={match.history.length === 0}
-        >
-          Undo Last Shot
-        </Button>
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          <Button
+            variant="contained"
+            color="warning"
+            onClick={onUndo}
+            disabled={match.history.length === 0}
+            size="small"
+          >
+            Undo Last Shot
+          </Button>
+          <Button
+            variant="contained"
+            color="error"
+            onClick={handleResetClick}
+            size="small"
+          >
+            Reset Match
+          </Button>
+        </Box>
       </Box>
 
-      <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 3, mb: 3 }}>
+      <Box sx={{ 
+        display: 'flex', 
+        flexDirection: { 
+          xs: playersPerTeam === 3 ? 'row' : 'column',
+          md: 'row' 
+        }, 
+        gap: 2,
+        mb: 2
+      }}>
         {/* Team 1 */}
         {team1Players.length > 0 && renderTeam(team1Players, 0, 1, team1Stats)}
         
         {/* VS Divider */}
-        <Box sx={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'center',
-          minWidth: { md: '50px' }
-        }}>
-          <Divider orientation="vertical" sx={{ 
-            height: '100%', 
-            display: { xs: 'none', md: 'block' } 
-          }} />
-          <Typography variant="h4" sx={{ 
-            display: { xs: 'block', md: 'none' }, 
-            textAlign: 'center', 
-            my: 2 
-          }}>
-            VS
-          </Typography>
-        </Box>
+        {playersPerTeam === 3 ? (
+          <Divider orientation="vertical" flexItem sx={{ display: { xs: 'block', md: 'block' } }} />
+        ) : (
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', my: 1 }}>
+            <Typography variant="h5" color="text.secondary">VS</Typography>
+          </Box>
+        )}
 
         {/* Team 2 */}
         {team2Players.length > 0 && renderTeam(team2Players, playersPerTeam, 2, team2Stats)}
       </Box>
 
-      <Box sx={{ mt: 4, textAlign: 'center' }}>
+      <Box sx={{ textAlign: 'center' }}>
         <Button
           variant="outlined"
           color="primary"
           onClick={onBack}
+          size="small"
         >
           Back to Setup
         </Button>
       </Box>
+
+      {/* Reset Confirmation Dialog */}
+      <Dialog
+        open={resetDialogOpen}
+        onClose={handleResetCancel}
+      >
+        <DialogTitle>Reset Match?</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Are you sure you want to reset the match? This will clear all current scores and cannot be undone.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleResetCancel} color="primary">
+            Cancel
+          </Button>
+          <Button onClick={handleResetConfirm} color="error" variant="contained">
+            Reset Match
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Paper>
   );
 };

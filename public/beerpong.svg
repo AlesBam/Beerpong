@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    .cup { fill: #ff0000; stroke: #000000; stroke-width: 20; }
+    .ball { fill: #ffffff; stroke: #000000; stroke-width: 20; }
+    .arc { fill: none; stroke: #000000; stroke-width: 20; stroke-linecap: round; }
+  </style>
+  
+  <!-- Background -->
+  <rect width="512" height="512" fill="transparent"/>
+  
+  <!-- Cups -->
+  <g transform="translate(106, 206)">
+    <!-- Back row -->
+    <path d="M50,200 L100,50 L150,50 L200,200 Z" class="cup"/>
+    <path d="M150,200 L200,50 L250,50 L300,200 Z" class="cup"/>
+    <path d="M250,200 L300,50 L350,50 L400,200 Z" class="cup"/>
+    
+    <!-- Middle row -->
+    <path d="M100,250 L150,100 L200,100 L250,250 Z" class="cup"/>
+    <path d="M200,250 L250,100 L300,100 L350,250 Z" class="cup"/>
+    
+    <!-- Front cup -->
+    <path d="M150,300 L200,150 L250,150 L300,300 Z" class="cup"/>
+  </g>
+  
+  <!-- Ball and arc -->
+  <circle cx="256" cy="100" r="30" class="ball"/>
+  <path d="M256,100 C 286,70 316,90 336,150" class="arc"/>
+</svg> 

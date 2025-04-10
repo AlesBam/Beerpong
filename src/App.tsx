@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Container, CssBaseline, ThemeProvider, createTheme, Box, Typography } from '@mui/material';
 import MatchSetup from './components/MatchSetup';
 import MatchPlay from './components/MatchPlay';
@@ -16,8 +16,21 @@ const theme = createTheme({
   },
 });
 
+const STORAGE_KEY = 'beerPongMatch';
+
 function App() {
-  const [currentMatch, setCurrentMatch] = useState<Match | null>(null);
+  const [currentMatch, setCurrentMatch] = useState<Match | null>(() => {
+    // Initialize state from localStorage
+    const savedMatch = localStorage.getItem(STORAGE_KEY);
+    return savedMatch ? JSON.parse(savedMatch) : null;
+  });
+
+  // Save to localStorage whenever match changes
+  useEffect(() => {
+    if (currentMatch) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(currentMatch));
+    }
+  }, [currentMatch]);
 
   const handleMatchSetup = (type: MatchType, team1Names: string[], team2Names: string[]) => {
     const newMatch: Match = {
@@ -34,6 +47,14 @@ function App() {
   };
 
   const handleBack = () => {
+    // Clear localStorage when going back to setup
+    localStorage.removeItem(STORAGE_KEY);
+    setCurrentMatch(null);
+  };
+
+  const handleReset = () => {
+    // Clear localStorage and current match
+    localStorage.removeItem(STORAGE_KEY);
     setCurrentMatch(null);
   };
 
@@ -94,6 +115,7 @@ function App() {
               onBack={handleBack}
               onShot={handleShot}
               onUndo={handleUndo}
+              onReset={handleReset}
             />
           ) : (
             <MatchSetup onMatchSetup={handleMatchSetup} />
