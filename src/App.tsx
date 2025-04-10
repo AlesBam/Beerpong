@@ -19,11 +19,11 @@ const theme = createTheme({
 function App() {
   const [currentMatch, setCurrentMatch] = useState<Match | null>(null);
 
-  const handleMatchSetup = (type: MatchType, playerNames: string[]) => {
+  const handleMatchSetup = (type: MatchType, team1Names: string[], team2Names: string[]) => {
     const newMatch: Match = {
       id: Date.now().toString(),
       type,
-      players: playerNames.map(name => ({
+      players: [...team1Names, ...team2Names].map(name => ({
         name,
         hits: 0,
         misses: 0,

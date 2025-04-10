@@ -10,16 +10,18 @@ import {
   Typography,
   Paper,
   SelectChangeEvent,
+  Divider,
 } from '@mui/material';
 import { MatchType } from '../types';
 
 interface MatchSetupProps {
-  onMatchSetup: (type: MatchType, playerNames: string[]) => void;
+  onMatchSetup: (type: MatchType, team1Names: string[], team2Names: string[]) => void;
 }
 
 const MatchSetup: React.FC<MatchSetupProps> = ({ onMatchSetup }) => {
   const [matchType, setMatchType] = useState<MatchType>('1v1');
-  const [playerNames, setPlayerNames] = useState<string[]>(['']);
+  const [team1Names, setTeam1Names] = useState<string[]>(['']);
+  const [team2Names, setTeam2Names] = useState<string[]>(['']);
 
   const handleMatchTypeChange = (event: SelectChangeEvent<MatchType>) => {
     const newType = event.target.value as MatchType;
@@ -27,20 +29,45 @@ const MatchSetup: React.FC<MatchSetupProps> = ({ onMatchSetup }) => {
     
     // Update number of player name fields based on match type
     const playerCount = parseInt(newType[0]);
-    setPlayerNames(Array(playerCount).fill(''));
+    setTeam1Names(Array(playerCount).fill(''));
+    setTeam2Names(Array(playerCount).fill(''));
   };
 
-  const handlePlayerNameChange = (index: number, value: string) => {
-    const newNames = [...playerNames];
+  const handleTeam1NameChange = (index: number, value: string) => {
+    const newNames = [...team1Names];
     newNames[index] = value;
-    setPlayerNames(newNames);
+    setTeam1Names(newNames);
+  };
+
+  const handleTeam2NameChange = (index: number, value: string) => {
+    const newNames = [...team2Names];
+    newNames[index] = value;
+    setTeam2Names(newNames);
   };
 
   const handleStartMatch = () => {
-    if (playerNames.every(name => name.trim() !== '')) {
-      onMatchSetup(matchType, playerNames);
+    if (team1Names.every(name => name.trim() !== '') && team2Names.every(name => name.trim() !== '')) {
+      onMatchSetup(matchType, team1Names, team2Names);
     }
   };
+
+  const renderTeamInputs = (teamNumber: number, names: string[], onChange: (index: number, value: string) => void) => (
+    <Box>
+      <Typography variant="h6" gutterBottom align="center">
+        Team {teamNumber}
+      </Typography>
+      {Array.from({ length: parseInt(matchType[0]) }).map((_, index) => (
+        <TextField
+          key={`team${teamNumber}-player-${index}`}
+          fullWidth
+          label={`Player ${index + 1}`}
+          value={names[index]}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => onChange(index, e.target.value)}
+          sx={{ mb: 2 }}
+        />
+      ))}
+    </Box>
+  );
 
   return (
     <Paper elevation={3} sx={{ p: 4 }}>
@@ -62,20 +89,31 @@ const MatchSetup: React.FC<MatchSetupProps> = ({ onMatchSetup }) => {
           </Select>
         </FormControl>
 
-        <Box sx={{ mb: 3 }}>
-          <Typography variant="h6" gutterBottom>
-            Player Names
-          </Typography>
-          {Array.from({ length: parseInt(matchType[0]) }).map((_, index) => (
-            <TextField
-              key={`player-${index}`}
-              fullWidth
-              label={`Player ${index + 1}`}
-              value={playerNames[index]}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => handlePlayerNameChange(index, e.target.value)}
-              sx={{ mb: 2 }}
-            />
-          ))}
+        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 3 }}>
+          <Box sx={{ flex: 1 }}>
+            {renderTeamInputs(1, team1Names, handleTeam1NameChange)}
+          </Box>
+          <Box sx={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center',
+            minWidth: { md: '50px' }
+          }}>
+            <Divider orientation="vertical" sx={{ 
+              height: '100%', 
+              display: { xs: 'none', md: 'block' } 
+            }} />
+            <Typography variant="h4" sx={{ 
+              display: { xs: 'block', md: 'none' }, 
+              textAlign: 'center', 
+              my: 2 
+            }}>
+              VS
+            </Typography>
+          </Box>
+          <Box sx={{ flex: 1 }}>
+            {renderTeamInputs(2, team2Names, handleTeam2NameChange)}
+          </Box>
         </Box>
 
         <Button
@@ -84,7 +122,8 @@ const MatchSetup: React.FC<MatchSetupProps> = ({ onMatchSetup }) => {
           fullWidth
           size="large"
           onClick={handleStartMatch}
-          disabled={playerNames.some(name => name.trim() === '')}
+          disabled={team1Names.some(name => name.trim() === '') || team2Names.some(name => name.trim() === '')}
+          sx={{ mt: 4 }}
         >
           Start Counter
         </Button>
