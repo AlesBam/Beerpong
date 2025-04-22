@@ -32,7 +32,7 @@ function App() {
     }
   }, [currentMatch]);
 
-  const handleMatchSetup = (type: MatchType, team1Names: string[], team2Names: string[]) => {
+  const handleMatchSetup = (type: MatchType, team1Names: string[], team2Names: string[], team1Name: string, team2Name: string) => {
     const newMatch: Match = {
       id: Date.now().toString(),
       type,
@@ -42,6 +42,8 @@ function App() {
         misses: 0,
       })),
       history: [],
+      team1Name,
+      team2Name
     };
     setCurrentMatch(newMatch);
   };

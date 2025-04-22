@@ -15,13 +15,15 @@ import {
 import { MatchType } from '../types';
 
 interface MatchSetupProps {
-  onMatchSetup: (type: MatchType, team1Names: string[], team2Names: string[]) => void;
+  onMatchSetup: (type: MatchType, team1Names: string[], team2Names: string[], team1Name: string, team2Name: string) => void;
 }
 
 const MatchSetup: React.FC<MatchSetupProps> = ({ onMatchSetup }) => {
   const [matchType, setMatchType] = useState<MatchType>('1v1');
   const [team1Names, setTeam1Names] = useState<string[]>(['']);
   const [team2Names, setTeam2Names] = useState<string[]>(['']);
+  const [team1Name, setTeam1Name] = useState<string>('Team 1');
+  const [team2Name, setTeam2Name] = useState<string>('Team 2');
 
   const handleMatchTypeChange = (event: SelectChangeEvent<MatchType>) => {
     const newType = event.target.value as MatchType;
@@ -47,14 +49,21 @@ const MatchSetup: React.FC<MatchSetupProps> = ({ onMatchSetup }) => {
 
   const handleStartMatch = () => {
     if (team1Names.every(name => name.trim() !== '') && team2Names.every(name => name.trim() !== '')) {
-      onMatchSetup(matchType, team1Names, team2Names);
+      onMatchSetup(matchType, team1Names, team2Names, team1Name, team2Name);
     }
   };
 
-  const renderTeamInputs = (teamNumber: number, names: string[], onChange: (index: number, value: string) => void) => (
+  const renderTeamInputs = (teamNumber: number, names: string[], onChange: (index: number, value: string) => void, teamName: string, onTeamNameChange: (value: string) => void) => (
     <Box>
+      <TextField
+        fullWidth
+        label={`Team ${teamNumber} Name`}
+        value={teamName}
+        onChange={(e) => onTeamNameChange(e.target.value)}
+        sx={{ mb: 2 }}
+      />
       <Typography variant="h6" gutterBottom align="center">
-        Team {teamNumber}
+        {teamName}
       </Typography>
       {Array.from({ length: parseInt(matchType[0]) }).map((_, index) => (
         <TextField
@@ -91,7 +100,7 @@ const MatchSetup: React.FC<MatchSetupProps> = ({ onMatchSetup }) => {
 
         <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 3 }}>
           <Box sx={{ flex: 1 }}>
-            {renderTeamInputs(1, team1Names, handleTeam1NameChange)}
+            {renderTeamInputs(1, team1Names, handleTeam1NameChange, team1Name, setTeam1Name)}
           </Box>
           <Box sx={{ 
             display: 'flex', 
@@ -112,7 +121,7 @@ const MatchSetup: React.FC<MatchSetupProps> = ({ onMatchSetup }) => {
             </Typography>
           </Box>
           <Box sx={{ flex: 1 }}>
-            {renderTeamInputs(2, team2Names, handleTeam2NameChange)}
+            {renderTeamInputs(2, team2Names, handleTeam2NameChange, team2Name, setTeam2Name)}
           </Box>
         </Box>
 

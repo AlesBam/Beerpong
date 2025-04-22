@@ -9,6 +9,12 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
 } from '@mui/material';
 import { Match, Player } from '../types';
 
@@ -21,19 +27,19 @@ interface MatchPlayProps {
 }
 
 const MatchPlay: React.FC<MatchPlayProps> = ({ match, onBack, onShot, onUndo, onReset }) => {
-  const [resetDialogOpen, setResetDialogOpen] = useState(false);
+  const [finishDialogOpen, setFinishDialogOpen] = useState(false);
 
-  const handleResetClick = () => {
-    setResetDialogOpen(true);
+  const handleFinishClick = () => {
+    setFinishDialogOpen(true);
   };
 
-  const handleResetConfirm = () => {
-    setResetDialogOpen(false);
-    onReset();
+  const handleFinishConfirm = () => {
+    setFinishDialogOpen(false);
+    onBack();
   };
 
-  const handleResetCancel = () => {
-    setResetDialogOpen(false);
+  const handleFinishCancel = () => {
+    setFinishDialogOpen(false);
   };
 
   const handleHit = (playerIndex: number) => {
@@ -92,11 +98,11 @@ const MatchPlay: React.FC<MatchPlayProps> = ({ match, onBack, onShot, onUndo, on
   console.log('Team 1 Players:', team1Players);
   console.log('Team 2 Players:', team2Players);
 
-  const renderTeam = (players: Player[], startIndex: number, teamNumber: number, teamStats: { hits: number; total: number; accuracy: number }) => (
+  const renderTeam = (players: Player[], startIndex: number, teamNumber: number, teamStats: { hits: number; total: number; accuracy: number }, teamName: string) => (
     <Box sx={{ flex: 1 }}>
       <Box sx={{ textAlign: 'center', mb: 2 }}>
         <Typography variant="h5" gutterBottom>
-          Team {teamNumber}
+          {teamName}
         </Typography>
         <Typography variant="body2" color="text.secondary">
           Team Stats: {teamStats.hits} hits | {teamStats.total} shots | {teamStats.accuracy.toFixed(1)}%
@@ -154,6 +160,94 @@ const MatchPlay: React.FC<MatchPlayProps> = ({ match, onBack, onShot, onUndo, on
     </Box>
   );
 
+  const renderResultsSummary = () => {
+    const allPlayers = [...team1Players, ...team2Players];
+    const allPlayerStats = allPlayers.map((_, index) => getPlayerStats(index));
+
+    return (
+      <Box sx={{ mt: 2 }}>
+        <Typography variant="h6" gutterBottom>Match Summary</Typography>
+        <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
+          {/* Team 1 Section */}
+          <Box sx={{ flex: 1 }}>
+            <Typography variant="subtitle2" sx={{ textAlign: 'center', mb: 1, fontWeight: 'bold' }}>
+              {match.team1Name}
+            </Typography>
+            <TableContainer component={Paper}>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell sx={{ fontSize: '0.75rem' }}>Player</TableCell>
+                    <TableCell align="right" sx={{ fontSize: '0.75rem' }}>Hits</TableCell>
+                    <TableCell align="right" sx={{ fontSize: '0.75rem' }}>Shots</TableCell>
+                    <TableCell align="right" sx={{ fontSize: '0.75rem' }}>Acc%</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {team1Players.map((player, index) => {
+                    const stats = allPlayerStats[index];
+                    return (
+                      <TableRow key={index}>
+                        <TableCell sx={{ fontSize: '0.75rem' }}>{player.name}</TableCell>
+                        <TableCell align="right" sx={{ fontSize: '0.75rem' }}>{stats.hits}</TableCell>
+                        <TableCell align="right" sx={{ fontSize: '0.75rem' }}>{stats.total}</TableCell>
+                        <TableCell align="right" sx={{ fontSize: '0.75rem' }}>{stats.accuracy.toFixed(1)}</TableCell>
+                      </TableRow>
+                    );
+                  })}
+                  <TableRow>
+                    <TableCell sx={{ fontSize: '0.75rem', fontWeight: 'bold' }}>Team Total</TableCell>
+                    <TableCell align="right" sx={{ fontSize: '0.75rem', fontWeight: 'bold' }}>{team1Stats.hits}</TableCell>
+                    <TableCell align="right" sx={{ fontSize: '0.75rem', fontWeight: 'bold' }}>{team1Stats.total}</TableCell>
+                    <TableCell align="right" sx={{ fontSize: '0.75rem', fontWeight: 'bold' }}>{team1Stats.accuracy.toFixed(1)}</TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </Box>
+
+          {/* Team 2 Section */}
+          <Box sx={{ flex: 1 }}>
+            <Typography variant="subtitle2" sx={{ textAlign: 'center', mb: 1, fontWeight: 'bold' }}>
+              {match.team2Name}
+            </Typography>
+            <TableContainer component={Paper}>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell sx={{ fontSize: '0.75rem' }}>Player</TableCell>
+                    <TableCell align="right" sx={{ fontSize: '0.75rem' }}>Hits</TableCell>
+                    <TableCell align="right" sx={{ fontSize: '0.75rem' }}>Shots</TableCell>
+                    <TableCell align="right" sx={{ fontSize: '0.75rem' }}>Acc%</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {team2Players.map((player, index) => {
+                    const stats = allPlayerStats[playersPerTeam + index];
+                    return (
+                      <TableRow key={index}>
+                        <TableCell sx={{ fontSize: '0.75rem' }}>{player.name}</TableCell>
+                        <TableCell align="right" sx={{ fontSize: '0.75rem' }}>{stats.hits}</TableCell>
+                        <TableCell align="right" sx={{ fontSize: '0.75rem' }}>{stats.total}</TableCell>
+                        <TableCell align="right" sx={{ fontSize: '0.75rem' }}>{stats.accuracy.toFixed(1)}</TableCell>
+                      </TableRow>
+                    );
+                  })}
+                  <TableRow>
+                    <TableCell sx={{ fontSize: '0.75rem', fontWeight: 'bold' }}>Team Total</TableCell>
+                    <TableCell align="right" sx={{ fontSize: '0.75rem', fontWeight: 'bold' }}>{team2Stats.hits}</TableCell>
+                    <TableCell align="right" sx={{ fontSize: '0.75rem', fontWeight: 'bold' }}>{team2Stats.total}</TableCell>
+                    <TableCell align="right" sx={{ fontSize: '0.75rem', fontWeight: 'bold' }}>{team2Stats.accuracy.toFixed(1)}</TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </Box>
+        </Box>
+      </Box>
+    );
+  };
+
   return (
     <Paper elevation={3} sx={{ p: 2 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
@@ -172,11 +266,11 @@ const MatchPlay: React.FC<MatchPlayProps> = ({ match, onBack, onShot, onUndo, on
           </Button>
           <Button
             variant="contained"
-            color="error"
-            onClick={handleResetClick}
+            color="success"
+            onClick={handleFinishClick}
             size="small"
           >
-            Reset Match
+            Finish Match
           </Button>
         </Box>
       </Box>
@@ -191,7 +285,7 @@ const MatchPlay: React.FC<MatchPlayProps> = ({ match, onBack, onShot, onUndo, on
         mb: 2
       }}>
         {/* Team 1 */}
-        {team1Players.length > 0 && renderTeam(team1Players, 0, 1, team1Stats)}
+        {team1Players.length > 0 && renderTeam(team1Players, 0, 1, team1Stats, match.team1Name)}
         
         {/* VS Divider */}
         {playersPerTeam === 3 ? (
@@ -203,7 +297,7 @@ const MatchPlay: React.FC<MatchPlayProps> = ({ match, onBack, onShot, onUndo, on
         )}
 
         {/* Team 2 */}
-        {team2Players.length > 0 && renderTeam(team2Players, playersPerTeam, 2, team2Stats)}
+        {team2Players.length > 0 && renderTeam(team2Players, playersPerTeam, 2, team2Stats, match.team2Name)}
       </Box>
 
       <Box sx={{ textAlign: 'center' }}>
@@ -217,23 +311,23 @@ const MatchPlay: React.FC<MatchPlayProps> = ({ match, onBack, onShot, onUndo, on
         </Button>
       </Box>
 
-      {/* Reset Confirmation Dialog */}
+      {/* Finish Match Dialog */}
       <Dialog
-        open={resetDialogOpen}
-        onClose={handleResetCancel}
+        open={finishDialogOpen}
+        onClose={handleFinishCancel}
+        maxWidth="md"
+        fullWidth
       >
-        <DialogTitle>Reset Match?</DialogTitle>
+        <DialogTitle>Match Results</DialogTitle>
         <DialogContent>
-          <Typography>
-            Are you sure you want to reset the match? This will clear all current scores and cannot be undone.
-          </Typography>
+          {renderResultsSummary()}
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleResetCancel} color="primary">
-            Cancel
+          <Button onClick={handleFinishCancel} color="primary">
+            Continue Playing
           </Button>
-          <Button onClick={handleResetConfirm} color="error" variant="contained">
-            Reset Match
+          <Button onClick={handleFinishConfirm} color="success" variant="contained">
+            Finish Match
           </Button>
         </DialogActions>
       </Dialog>

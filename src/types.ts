@@ -15,4 +15,6 @@ export interface Match {
     result: 'hit' | 'miss';
     timestamp: string;
   }[];
+  team1Name: string;
+  team2Name: string;
 } 
