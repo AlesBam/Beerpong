@@ -26,7 +26,7 @@ const MatchSetup: React.FC<MatchSetupProps> = ({ onMatchSetup }) => {
   const [team2Names, setTeam2Names] = useState<string[]>(['']);
   const [team1Name, setTeam1Name] = useState<string>('Team 1');
   const [team2Name, setTeam2Name] = useState<string>('Team 2');
-  const [useTimer, setUseTimer] = useState<boolean>(false);
+  const [useTimer, setUseTimer] = useState<boolean>(true);
 
   const handleMatchTypeChange = (event: SelectChangeEvent<MatchType>) => {
     const newType = event.target.value as MatchType;

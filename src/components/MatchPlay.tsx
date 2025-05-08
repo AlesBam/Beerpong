@@ -46,6 +46,8 @@ const MatchPlay: React.FC<MatchPlayProps> = ({ match, onBack, onShot, onUndo, on
   const [baseTimeEndDialogOpen, setBaseTimeEndDialogOpen] = useState(false);
   const [currentPlayerTimeLeft, setCurrentPlayerTimeLeft] = useState<number>(20);
   const [overtimeDialogOpen, setOvertimeDialogOpen] = useState(false);
+  const [matchStartTime, setMatchStartTime] = useState<number | null>(null);
+  const [matchEndTime, setMatchEndTime] = useState<number | null>(null);
 
   // Timer effect for base time
   useEffect(() => {
@@ -97,6 +99,7 @@ const MatchPlay: React.FC<MatchPlayProps> = ({ match, onBack, onShot, onUndo, on
 
   const handleFinishClick = () => {
     setFinishDialogOpen(true);
+    setMatchEndTime(Date.now());
   };
 
   const handleFinishConfirm = () => {
@@ -109,6 +112,7 @@ const MatchPlay: React.FC<MatchPlayProps> = ({ match, onBack, onShot, onUndo, on
   };
 
   const handleHit = (playerIndex: number) => {
+    if (matchStartTime === null) setMatchStartTime(Date.now());
     onShot(playerIndex, 'hit');
     if (!isBaseTime) {
       setCurrentPlayerTimeLeft(20);
@@ -116,6 +120,7 @@ const MatchPlay: React.FC<MatchPlayProps> = ({ match, onBack, onShot, onUndo, on
   };
 
   const handleMiss = (playerIndex: number) => {
+    if (matchStartTime === null) setMatchStartTime(Date.now());
     onShot(playerIndex, 'miss');
     if (!isBaseTime) {
       setCurrentPlayerTimeLeft(20);
@@ -235,9 +240,18 @@ const MatchPlay: React.FC<MatchPlayProps> = ({ match, onBack, onShot, onUndo, on
   const renderResultsSummary = () => {
     const allPlayers = [...team1Players, ...team2Players];
     const allPlayerStats = allPlayers.map((_, index) => getPlayerStats(index));
+    let matchDuration = null;
+    if (matchStartTime && matchEndTime && matchEndTime > matchStartTime) {
+      matchDuration = formatDuration(matchEndTime - matchStartTime);
+    }
 
     return (
       <Box sx={{ mt: 2 }}>
+        {matchDuration && (
+          <Typography variant="subtitle1" sx={{ mb: 1 }}>
+            Match time: <b>{matchDuration}</b>
+          </Typography>
+        )}
         <Typography variant="h6" gutterBottom>Match Summary</Typography>
         <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
           {/* Team 1 Section */}
@@ -333,53 +347,67 @@ const MatchPlay: React.FC<MatchPlayProps> = ({ match, onBack, onShot, onUndo, on
     setOvertimeDialogOpen(false);
   };
 
+  // Helper to format duration in MM:SS
+  const formatDuration = (ms: number): string => {
+    const totalSeconds = Math.floor(ms / 1000);
+    const mins = Math.floor(totalSeconds / 60);
+    const secs = totalSeconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const handleSubtractMinute = () => {
+    if (isBaseTime) {
+      setTimeLeft(prev => Math.max(0, prev - 60));
+    }
+  };
+
   return (
     <Paper elevation={3} sx={{ p: 2 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-        <Typography variant="h4">
-          Beer Pong Counter
+      <Box sx={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center', mb: 2, gap: 1 }}>
+        <Typography 
+          variant="h5" 
+          sx={{ 
+            color: (isBaseTime ? timeLeft : currentPlayerTimeLeft) <= 10 ? 'error.main' : 'text.primary',
+            fontWeight: 'bold',
+            mr: 2,
+            minWidth: 70,
+            textAlign: 'center'
+          }}
+        >
+          {isBaseTime ? formatTime(timeLeft) : formatTime(currentPlayerTimeLeft)}
         </Typography>
-        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-          {match.useTimer && (
-            <Typography 
-              variant="h5" 
-              sx={{ 
-                color: (isBaseTime ? timeLeft : currentPlayerTimeLeft) <= 10 ? 'error.main' : 'text.primary',
-                fontWeight: 'bold',
-                mr: 2
-              }}
-            >
-              {isBaseTime ? formatTime(timeLeft) : formatTime(currentPlayerTimeLeft)}
-            </Typography>
-          )}
-          {isBaseTime && match.useTimer && (
-            <Button
-              variant="contained"
-              color="secondary"
-              onClick={handleOvertimeClick}
-              size="small"
-            >
-              Overtime +5min
-            </Button>
-          )}
+        {isBaseTime && match.useTimer && (
           <Button
             variant="contained"
-            color="warning"
-            onClick={onUndo}
-            disabled={match.history.length === 0}
-            size="small"
+            color="secondary"
+            onClick={handleOvertimeClick}
+            size="large"
+            sx={{ minWidth: 80, minHeight: 80, maxWidth: 80, maxHeight: 80, p: 0, fontSize: '1.05rem', lineHeight: 1.1, letterSpacing: 0, fontWeight: 600, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}
           >
-            Undo Last Shot
+            Overtime<br/>+5min
           </Button>
+        )}
+        <Button
+          variant="contained"
+          color="warning"
+          onClick={onUndo}
+          disabled={match.history.length === 0}
+          size="large"
+          sx={{ minWidth: 80, minHeight: 80, maxWidth: 80, maxHeight: 80, p: 0, fontSize: '1.05rem', lineHeight: 1.1, letterSpacing: 0, fontWeight: 600, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}
+        >
+          Undo<br/>Last Shot
+        </Button>
+        {isBaseTime && match.useTimer && (
           <Button
-            variant="contained"
-            color="success"
-            onClick={handleFinishClick}
+            variant="outlined"
+            color="error"
+            onClick={handleSubtractMinute}
             size="small"
+            sx={{ minWidth: 36, minHeight: 36, maxWidth: 36, maxHeight: 36, ml: 1, p: 0, fontSize: '0.75rem', lineHeight: 1, fontWeight: 600, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}
           >
-            Finish Match
+            -1<br/>min
           </Button>
-        </Box>
+        )}
       </Box>
 
       <Box sx={{ 
@@ -407,14 +435,14 @@ const MatchPlay: React.FC<MatchPlayProps> = ({ match, onBack, onShot, onUndo, on
         {team2Players.length > 0 && renderTeam(team2Players, playersPerTeam, 2, team2Stats, match.team2Name)}
       </Box>
 
-      <Box sx={{ textAlign: 'center' }}>
+      <Box sx={{ textAlign: 'center', mt: 2 }}>
         <Button
-          variant="outlined"
-          color="primary"
-          onClick={onBack}
-          size="small"
+          variant="contained"
+          color="success"
+          onClick={handleFinishClick}
+          size="large"
         >
-          Back to Setup
+          Finish Match
         </Button>
       </Box>
 
