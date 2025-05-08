@@ -3,6 +3,7 @@ import { Container, CssBaseline, ThemeProvider, createTheme, Box, Typography } f
 import MatchSetup from './components/MatchSetup';
 import MatchPlay from './components/MatchPlay';
 import { Match, MatchType } from './types';
+import { Analytics } from "@vercel/analytics/react"
 
 const theme = createTheme({
   palette: {
