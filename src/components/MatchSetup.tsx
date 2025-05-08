@@ -11,11 +11,13 @@ import {
   Paper,
   SelectChangeEvent,
   Divider,
+  Switch,
+  FormControlLabel,
 } from '@mui/material';
 import { MatchType } from '../types';
 
 interface MatchSetupProps {
-  onMatchSetup: (type: MatchType, team1Names: string[], team2Names: string[], team1Name: string, team2Name: string) => void;
+  onMatchSetup: (type: MatchType, team1Names: string[], team2Names: string[], team1Name: string, team2Name: string, useTimer: boolean) => void;
 }
 
 const MatchSetup: React.FC<MatchSetupProps> = ({ onMatchSetup }) => {
@@ -24,6 +26,7 @@ const MatchSetup: React.FC<MatchSetupProps> = ({ onMatchSetup }) => {
   const [team2Names, setTeam2Names] = useState<string[]>(['']);
   const [team1Name, setTeam1Name] = useState<string>('Team 1');
   const [team2Name, setTeam2Name] = useState<string>('Team 2');
+  const [useTimer, setUseTimer] = useState<boolean>(false);
 
   const handleMatchTypeChange = (event: SelectChangeEvent<MatchType>) => {
     const newType = event.target.value as MatchType;
@@ -49,7 +52,7 @@ const MatchSetup: React.FC<MatchSetupProps> = ({ onMatchSetup }) => {
 
   const handleStartMatch = () => {
     if (team1Names.every(name => name.trim() !== '') && team2Names.every(name => name.trim() !== '')) {
-      onMatchSetup(matchType, team1Names, team2Names, team1Name, team2Name);
+      onMatchSetup(matchType, team1Names, team2Names, team1Name, team2Name, useTimer);
     }
   };
 
@@ -97,6 +100,18 @@ const MatchSetup: React.FC<MatchSetupProps> = ({ onMatchSetup }) => {
             <MenuItem value="3v3">3v3</MenuItem>
           </Select>
         </FormControl>
+
+        <FormControlLabel
+          control={
+            <Switch
+              checked={useTimer}
+              onChange={(e) => setUseTimer(e.target.checked)}
+              color="primary"
+            />
+          }
+          label="Enable Timer"
+          sx={{ mb: 3 }}
+        />
 
         <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 3 }}>
           <Box sx={{ flex: 1 }}>

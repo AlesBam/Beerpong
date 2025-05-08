@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Button,
@@ -27,7 +27,73 @@ interface MatchPlayProps {
 }
 
 const MatchPlay: React.FC<MatchPlayProps> = ({ match, onBack, onShot, onUndo, onReset }) => {
+  const getInitialTime = (matchType: string): number => {
+    switch (matchType) {
+      case '1v1':
+        return 600; // 10 minutes
+      case '2v2':
+        return 900; // 15 minutes
+      case '3v3':
+        return 1200; // 20 minutes
+      default:
+        return 600; // Default to 10 minutes
+    }
+  };
+
   const [finishDialogOpen, setFinishDialogOpen] = useState(false);
+  const [timeLeft, setTimeLeft] = useState<number>(getInitialTime(match.type));
+  const [isBaseTime, setIsBaseTime] = useState<boolean>(true);
+  const [baseTimeEndDialogOpen, setBaseTimeEndDialogOpen] = useState(false);
+  const [currentPlayerTimeLeft, setCurrentPlayerTimeLeft] = useState<number>(20);
+  const [overtimeDialogOpen, setOvertimeDialogOpen] = useState(false);
+
+  // Timer effect for base time
+  useEffect(() => {
+    if (!match.useTimer || !isBaseTime) return;
+
+    const timer = setInterval(() => {
+      setTimeLeft((prevTime) => {
+        if (prevTime <= 0) {
+          clearInterval(timer);
+          setBaseTimeEndDialogOpen(true);
+          return 0;
+        }
+        return prevTime - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [match.useTimer, isBaseTime]);
+
+  // Timer effect for shot time
+  useEffect(() => {
+    if (!match.useTimer || isBaseTime) return;
+
+    const timer = setInterval(() => {
+      setCurrentPlayerTimeLeft((prevTime) => {
+        if (prevTime <= 0) {
+          clearInterval(timer);
+          return 0;
+        }
+        return prevTime - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [match.useTimer, isBaseTime]);
+
+  // Format time as MM:SS
+  const formatTime = (seconds: number): string => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const handleBaseTimeEndDialogClose = () => {
+    setBaseTimeEndDialogOpen(false);
+    setIsBaseTime(false);
+    setCurrentPlayerTimeLeft(20);
+  };
 
   const handleFinishClick = () => {
     setFinishDialogOpen(true);
@@ -44,10 +110,16 @@ const MatchPlay: React.FC<MatchPlayProps> = ({ match, onBack, onShot, onUndo, on
 
   const handleHit = (playerIndex: number) => {
     onShot(playerIndex, 'hit');
+    if (!isBaseTime) {
+      setCurrentPlayerTimeLeft(20);
+    }
   };
 
   const handleMiss = (playerIndex: number) => {
     onShot(playerIndex, 'miss');
+    if (!isBaseTime) {
+      setCurrentPlayerTimeLeft(20);
+    }
   };
 
   const getPlayerStats = (playerIndex: number) => {
@@ -248,13 +320,48 @@ const MatchPlay: React.FC<MatchPlayProps> = ({ match, onBack, onShot, onUndo, on
     );
   };
 
+  const handleOvertimeClick = () => {
+    setOvertimeDialogOpen(true);
+  };
+
+  const handleOvertimeConfirm = () => {
+    setTimeLeft(prev => prev + 300); // Add 5 minutes (300 seconds)
+    setOvertimeDialogOpen(false);
+  };
+
+  const handleOvertimeCancel = () => {
+    setOvertimeDialogOpen(false);
+  };
+
   return (
     <Paper elevation={3} sx={{ p: 2 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
         <Typography variant="h4">
           Beer Pong Counter
         </Typography>
-        <Box sx={{ display: 'flex', gap: 1 }}>
+        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+          {match.useTimer && (
+            <Typography 
+              variant="h5" 
+              sx={{ 
+                color: (isBaseTime ? timeLeft : currentPlayerTimeLeft) <= 10 ? 'error.main' : 'text.primary',
+                fontWeight: 'bold',
+                mr: 2
+              }}
+            >
+              {isBaseTime ? formatTime(timeLeft) : formatTime(currentPlayerTimeLeft)}
+            </Typography>
+          )}
+          {isBaseTime && match.useTimer && (
+            <Button
+              variant="contained"
+              color="secondary"
+              onClick={handleOvertimeClick}
+              size="small"
+            >
+              Overtime +5min
+            </Button>
+          )}
           <Button
             variant="contained"
             color="warning"
@@ -320,6 +427,9 @@ const MatchPlay: React.FC<MatchPlayProps> = ({ match, onBack, onShot, onUndo, on
       >
         <DialogTitle>Match Results</DialogTitle>
         <DialogContent>
+          <Typography sx={{ mb: 2 }} color="warning.main">
+            Pro uložení výsledků si tuto tabulku prosím vyfoťte (screenshot).
+          </Typography>
           {renderResultsSummary()}
         </DialogContent>
         <DialogActions>
@@ -327,7 +437,47 @@ const MatchPlay: React.FC<MatchPlayProps> = ({ match, onBack, onShot, onUndo, on
             Continue Playing
           </Button>
           <Button onClick={handleFinishConfirm} color="success" variant="contained">
-            Finish Match
+            Close Match
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Base Time End Dialog */}
+      <Dialog
+        open={baseTimeEndDialogOpen}
+        onClose={handleBaseTimeEndDialogClose}
+      >
+        <DialogTitle>Base Time Ended</DialogTitle>
+        <DialogContent>
+          <Typography>
+            The base time has ended. From now on, each player has 20 seconds to make their shot.
+            The timer will reset after each shot.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleBaseTimeEndDialogClose} color="primary" variant="contained">
+            Got it!
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Overtime Confirmation Dialog */}
+      <Dialog
+        open={overtimeDialogOpen}
+        onClose={handleOvertimeCancel}
+      >
+        <DialogTitle>Confirm Overtime</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Are you sure you want to add 5 minutes to the base time? This action cannot be undone.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleOvertimeCancel} color="primary">
+            Cancel
+          </Button>
+          <Button onClick={handleOvertimeConfirm} color="secondary" variant="contained">
+            Add 5 Minutes
           </Button>
         </DialogActions>
       </Dialog>

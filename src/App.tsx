@@ -32,7 +32,7 @@ function App() {
     }
   }, [currentMatch]);
 
-  const handleMatchSetup = (type: MatchType, team1Names: string[], team2Names: string[], team1Name: string, team2Name: string) => {
+  const handleMatchSetup = (type: MatchType, team1Names: string[], team2Names: string[], team1Name: string, team2Name: string, useTimer: boolean) => {
     const newMatch: Match = {
       id: Date.now().toString(),
       type,
@@ -43,7 +43,8 @@ function App() {
       })),
       history: [],
       team1Name,
-      team2Name
+      team2Name,
+      useTimer // Use the value from MatchSetup
     };
     setCurrentMatch(newMatch);
   };
