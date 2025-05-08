@@ -131,6 +131,7 @@ function App() {
           </Typography>
         </Box>
       </Box>
+      <Analytics />
     </ThemeProvider>
   );
 }
