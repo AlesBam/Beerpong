@@ -98,7 +98,7 @@ const MatchPlay: React.FC<MatchPlayProps> = ({ match, onBack, onShot, onUndo, on
   };
 
   // URL tvého Google Apps Script webhooku
-  const GOOGLE_SHEET_WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbxeNP7xb6o6cgR4yV3WFBwTonuX9XCu2amZlnetXLVnynVugTmrjYYv-QERfvynUWja6g/exec';
+  const GOOGLE_SHEET_WEBHOOK_URL = 'https://beerpong-api.vercel.app/api/beerpong';
 
   // Odeslání výsledků do Google Sheets
   const sendResultsToSheet = async (results: {team: string, player: string, hits: number, misses: number}[]) => {
