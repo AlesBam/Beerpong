@@ -142,16 +142,18 @@ const MatchPlay: React.FC<MatchPlayProps> = ({ match, onBack, onShot, onUndo, on
   };
 
   const handleFinishConfirm = () => {
+    
     // Připrav data pro Google Sheets
     const results = [
+      { team: '', player: '', hits: 69696969, misses: 69696969 } as any, // Free row above
       ...team1Players.map((player) => ({
-        team: match.team1Name,
+        team: `${match.team1Name} (${match.type})`,
         player: player.name,
         hits: player.hits,
         misses: player.misses
       })),
       ...team2Players.map((player) => ({
-        team: match.team2Name,
+        team: `${match.team2Name} (${match.type})`,
         player: player.name,
         hits: player.hits,
         misses: player.misses
