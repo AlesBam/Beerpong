@@ -97,12 +97,68 @@ const MatchPlay: React.FC<MatchPlayProps> = ({ match, onBack, onShot, onUndo, on
     setCurrentPlayerTimeLeft(20);
   };
 
+  // URL tvého Google Apps Script webhooku
+  const GOOGLE_SHEET_WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbxeNP7xb6o6cgR4yV3WFBwTonuX9XCu2amZlnetXLVnynVugTmrjYYv-QERfvynUWja6g/exec';
+
+  // Odeslání výsledků do Google Sheets
+  const sendResultsToSheet = async (results: {team: string, player: string, hits: number, misses: number}[]) => {
+    console.log('Odesílám data do Google Sheets:', results);
+    try {
+      const response = await fetch(GOOGLE_SHEET_WEBHOOK_URL, {
+        method: 'POST',
+        mode: 'cors', // Explicitly set CORS mode
+        body: JSON.stringify(results),
+        headers: { 
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Chyba při odesílání do Google Sheets:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorText
+        });
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      console.log('Odeslání do Google Sheets proběhlo úspěšně:', data);
+    } catch (error) {
+      console.error('Chyba při fetch do Google Sheets:', error);
+      if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+        alert('Nepodařilo se připojit k Google Sheets. Zkontrolujte prosím připojení k internetu a zda je webhook URL správně nastaven.');
+      } else {
+        alert('Nepodařilo se odeslat výsledky do Google Sheets. Zkontrolujte prosím konzoli pro více informací.');
+      }
+    }
+  };
+
   const handleFinishClick = () => {
     setFinishDialogOpen(true);
     setMatchEndTime(Date.now());
   };
 
   const handleFinishConfirm = () => {
+    // Připrav data pro Google Sheets
+    const results = [
+      ...team1Players.map((player) => ({
+        team: match.team1Name,
+        player: player.name,
+        hits: player.hits,
+        misses: player.misses
+      })),
+      ...team2Players.map((player) => ({
+        team: match.team2Name,
+        player: player.name,
+        hits: player.hits,
+        misses: player.misses
+      }))
+    ];
+    console.log('Připravená data pro Google Sheets:', results);
+    sendResultsToSheet(results);
     setFinishDialogOpen(false);
     onBack();
   };
