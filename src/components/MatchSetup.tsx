@@ -14,10 +14,10 @@ import {
   Switch,
   FormControlLabel,
 } from '@mui/material';
-import { MatchType } from '../types';
+import { MatchType, LeagueType } from '../types';
 
 interface MatchSetupProps {
-  onMatchSetup: (type: MatchType, team1Names: string[], team2Names: string[], team1Name: string, team2Name: string, useTimer: boolean) => void;
+  onMatchSetup: (type: MatchType, team1Names: string[], team2Names: string[], team1Name: string, team2Name: string, useTimer: boolean, premierLeague: boolean, selectedLeague?: LeagueType) => void;
 }
 
 const MatchSetup: React.FC<MatchSetupProps> = ({ onMatchSetup }) => {
@@ -27,6 +27,8 @@ const MatchSetup: React.FC<MatchSetupProps> = ({ onMatchSetup }) => {
   const [team1Name, setTeam1Name] = useState<string>('Team 1');
   const [team2Name, setTeam2Name] = useState<string>('Team 2');
   const [useTimer, setUseTimer] = useState<boolean>(true);
+  const [premierLeague, setPremierLeague] = useState<boolean>(true);
+  const [selectedLeague, setSelectedLeague] = useState<LeagueType | ''>('');
 
   const handleMatchTypeChange = (event: SelectChangeEvent<MatchType>) => {
     const newType = event.target.value as MatchType;
@@ -52,8 +54,18 @@ const MatchSetup: React.FC<MatchSetupProps> = ({ onMatchSetup }) => {
 
   const handleStartMatch = () => {
     if (team1Names.every(name => name.trim() !== '') && team2Names.every(name => name.trim() !== '')) {
-      onMatchSetup(matchType, team1Names, team2Names, team1Name, team2Name, useTimer);
+      // Check if Premier League is enabled but no league is selected
+      if (premierLeague && !selectedLeague) {
+        return; // Don't start if Premier League is on but no league selected
+      }
+      onMatchSetup(matchType, team1Names, team2Names, team1Name, team2Name, useTimer, premierLeague, selectedLeague || undefined);
     }
+  };
+
+  const isStartDisabled = () => {
+    const hasAllPlayerNames = team1Names.every(name => name.trim() !== '') && team2Names.every(name => name.trim() !== '');
+    const hasValidLeagueSelection = !premierLeague || (premierLeague && selectedLeague);
+    return !hasAllPlayerNames || !hasValidLeagueSelection;
   };
 
   const renderTeamInputs = (teamNumber: number, names: string[], onChange: (index: number, value: string) => void, teamName: string, onTeamNameChange: (value: string) => void) => (
@@ -101,17 +113,49 @@ const MatchSetup: React.FC<MatchSetupProps> = ({ onMatchSetup }) => {
           </Select>
         </FormControl>
 
-        <FormControlLabel
-          control={
-            <Switch
-              checked={useTimer}
-              onChange={(e) => setUseTimer(e.target.checked)}
-              color="primary"
-            />
-          }
-          label="Enable Timer"
-          sx={{ mb: 3 }}
-        />
+        <Box sx={{ display: 'flex', gap: 2, mb: 3, flexDirection: { xs: 'column', sm: 'row' } }}>
+          <FormControlLabel
+            control={
+              <Switch
+                checked={useTimer}
+                onChange={(e) => setUseTimer(e.target.checked)}
+                color="primary"
+              />
+            }
+            label="Enable Timer"
+          />
+          
+          <FormControlLabel
+            control={
+              <Switch
+                checked={premierLeague}
+                onChange={(e) => {
+                  setPremierLeague(e.target.checked);
+                  if (!e.target.checked) {
+                    setSelectedLeague(''); // Clear selection when Premier League is turned off
+                  }
+                }}
+                color="primary"
+              />
+            }
+            label="Premier League?"
+          />
+        </Box>
+
+        {premierLeague && (
+          <FormControl fullWidth sx={{ mb: 3 }}>
+            <InputLabel>League</InputLabel>
+            <Select
+              value={selectedLeague}
+              label="League"
+              onChange={(e) => setSelectedLeague(e.target.value as LeagueType)}
+            >
+              <MenuItem value="">Select</MenuItem>
+              <MenuItem value="1. League">1. League</MenuItem>
+              <MenuItem value="2. League">2. League</MenuItem>
+            </Select>
+          </FormControl>
+        )}
 
         <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 3 }}>
           <Box sx={{ flex: 1 }}>
@@ -146,7 +190,7 @@ const MatchSetup: React.FC<MatchSetupProps> = ({ onMatchSetup }) => {
           fullWidth
           size="large"
           onClick={handleStartMatch}
-          disabled={team1Names.some(name => name.trim() === '') || team2Names.some(name => name.trim() === '')}
+          disabled={isStartDisabled()}
           sx={{ mt: 4 }}
         >
           Start Counter

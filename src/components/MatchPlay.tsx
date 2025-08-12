@@ -101,13 +101,18 @@ const MatchPlay: React.FC<MatchPlayProps> = ({ match, onBack, onShot, onUndo, on
   const GOOGLE_SHEET_WEBHOOK_URL = 'https://beerpong-api.vercel.app/api/beerpong';
 
   // Odeslání výsledků do Google Sheets
-  const sendResultsToSheet = async (results: {team: string, player: string, hits: number, misses: number}[]) => {
-    console.log('Odesílám data do Google Sheets:', results);
+  const sendResultsToSheet = async (results: {team: string, player: string, hits: number, misses: number}[], league?: string) => {
+    console.log('Odesílám data do Google Sheets:', results, 'League:', league);
     try {
+      const payload = {
+        results,
+        league // Add league information to the payload
+      };
+      
       const response = await fetch(GOOGLE_SHEET_WEBHOOK_URL, {
         method: 'POST',
         mode: 'cors', // Explicitly set CORS mode
-        body: JSON.stringify(results),
+        body: JSON.stringify(payload),
         headers: { 
           'Content-Type': 'application/json',
           'Accept': 'application/json'
@@ -160,7 +165,18 @@ const MatchPlay: React.FC<MatchPlayProps> = ({ match, onBack, onShot, onUndo, on
       }))
     ];
     console.log('Připravená data pro Google Sheets:', results);
-    sendResultsToSheet(results);
+    
+    // Determine which league to send to based on Premier League settings
+    let leagueToSend: string | undefined;
+    if (match.premierLeague && match.selectedLeague) {
+      if (match.selectedLeague === '1. League') {
+        leagueToSend = 'PL';
+      } else if (match.selectedLeague === '2. League') {
+        leagueToSend = '2.League';
+      }
+    }
+    
+    sendResultsToSheet(results, leagueToSend);
     setFinishDialogOpen(false);
     onBack();
   };

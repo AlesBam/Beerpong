@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Container, CssBaseline, ThemeProvider, createTheme, Box, Typography } from '@mui/material';
 import MatchSetup from './components/MatchSetup';
 import MatchPlay from './components/MatchPlay';
-import { Match, MatchType } from './types';
+import { Match, MatchType, LeagueType } from './types';
 import { Analytics } from "@vercel/analytics/react"
 
 const theme = createTheme({
@@ -33,7 +33,7 @@ function App() {
     }
   }, [currentMatch]);
 
-  const handleMatchSetup = (type: MatchType, team1Names: string[], team2Names: string[], team1Name: string, team2Name: string, useTimer: boolean) => {
+  const handleMatchSetup = (type: MatchType, team1Names: string[], team2Names: string[], team1Name: string, team2Name: string, useTimer: boolean, premierLeague: boolean, selectedLeague?: LeagueType) => {
     const newMatch: Match = {
       id: Date.now().toString(),
       type,
@@ -45,7 +45,9 @@ function App() {
       history: [],
       team1Name,
       team2Name,
-      useTimer // Use the value from MatchSetup
+      useTimer,
+      premierLeague,
+      selectedLeague
     };
     setCurrentMatch(newMatch);
   };
