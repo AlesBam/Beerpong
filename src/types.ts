@@ -22,4 +22,5 @@ export interface Match {
   useTimer: boolean;
   premierLeague: boolean;
   selectedLeague?: LeagueType;
+  endTimestamp?: string;
 } 

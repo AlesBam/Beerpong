@@ -101,12 +101,13 @@ const MatchPlay: React.FC<MatchPlayProps> = ({ match, onBack, onShot, onUndo, on
   const GOOGLE_SHEET_WEBHOOK_URL = 'https://beerpong-api.vercel.app/api/beerpong';
 
   // Odeslání výsledků do Google Sheets
-  const sendResultsToSheet = async (results: {team: string, player: string, hits: number, misses: number}[], league?: string) => {
-    console.log('Odesílám data do Google Sheets:', results, 'League:', league);
+  const sendResultsToSheet = async (results: {team: string, player: string, hits: number, misses: number}[], league?: string, timestamp?: string) => {
+    console.log('Odesílám data do Google Sheets:', results, 'League:', league, 'Timestamp:', timestamp);
     try {
       const payload = {
         results,
-        league // Add league information to the payload
+        league, // Add league information to the payload
+        timestamp // Add timestamp to the payload
       };
       
       const response = await fetch(GOOGLE_SHEET_WEBHOOK_URL, {
@@ -131,6 +132,10 @@ const MatchPlay: React.FC<MatchPlayProps> = ({ match, onBack, onShot, onUndo, on
       
       const data = await response.json();
       console.log('Odeslání do Google Sheets proběhlo úspěšně:', data);
+      
+      // Show success message with sheet information
+      const sheetName = league === 'PL' ? 'PL' : league === '2.League' ? '2.League' : 'Sheet1';
+      alert(`Match results saved successfully to ${sheetName} sheet!`);
     } catch (error) {
       console.error('Chyba při fetch do Google Sheets:', error);
       if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
@@ -147,6 +152,8 @@ const MatchPlay: React.FC<MatchPlayProps> = ({ match, onBack, onShot, onUndo, on
   };
 
   const handleFinishConfirm = () => {
+    // Capture the exact timestamp when match is finished
+    const matchEndTimestamp = new Date().toISOString();
     
     // Připrav data pro Google Sheets
     const results = [
@@ -176,7 +183,8 @@ const MatchPlay: React.FC<MatchPlayProps> = ({ match, onBack, onShot, onUndo, on
       }
     }
     
-    sendResultsToSheet(results, leagueToSend);
+    console.log('Sending to league:', leagueToSend, 'Timestamp:', matchEndTimestamp);
+    sendResultsToSheet(results, leagueToSend, matchEndTimestamp);
     setFinishDialogOpen(false);
     onBack();
   };
@@ -319,11 +327,19 @@ const MatchPlay: React.FC<MatchPlayProps> = ({ match, onBack, onShot, onUndo, on
       matchDuration = formatDuration(matchEndTime - matchStartTime);
     }
 
+    // Format the end time for display
+    const endTimeFormatted = matchEndTime ? new Date(matchEndTime).toLocaleString() : null;
+
     return (
       <Box sx={{ mt: 2 }}>
         {matchDuration && (
           <Typography variant="subtitle1" sx={{ mb: 1 }}>
             Match time: <b>{matchDuration}</b>
+          </Typography>
+        )}
+        {endTimeFormatted && (
+          <Typography variant="subtitle1" sx={{ mb: 1 }}>
+            Match ended: <b>{endTimeFormatted}</b>
           </Typography>
         )}
         <Typography variant="h6" gutterBottom>Match Summary</Typography>
@@ -437,6 +453,15 @@ const MatchPlay: React.FC<MatchPlayProps> = ({ match, onBack, onShot, onUndo, on
 
   return (
     <Paper elevation={3} sx={{ p: 2 }}>
+      {/* League indicator */}
+      {match.premierLeague && match.selectedLeague && (
+        <Box sx={{ mb: 2, p: 1, bgcolor: 'primary.main', borderRadius: 1, textAlign: 'center' }}>
+          <Typography variant="subtitle2" sx={{ color: 'white', fontWeight: 'bold' }}>
+            {match.selectedLeague} - Premier League Match
+          </Typography>
+        </Box>
+      )}
+      
       <Box sx={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center', mb: 2, gap: 1 }}>
         <Typography 
           variant="h5" 
@@ -532,6 +557,24 @@ const MatchPlay: React.FC<MatchPlayProps> = ({ match, onBack, onShot, onUndo, on
           <Typography sx={{ mb: 2 }} color="warning.main">
             Pro uložení výsledků si tuto tabulku prosím vyfoťte (screenshot).
           </Typography>
+          
+          {/* Show which sheet data will be saved to */}
+          {(() => {
+            let sheetName = 'Sheet1';
+            if (match.premierLeague && match.selectedLeague) {
+              if (match.selectedLeague === '1. League') {
+                sheetName = 'PL';
+              } else if (match.selectedLeague === '2. League') {
+                sheetName = '2.League';
+              }
+            }
+            return (
+              <Typography sx={{ mb: 2 }} color="info.main">
+                Results will be saved to: <b>{sheetName}</b> sheet
+              </Typography>
+            );
+          })()}
+          
           {renderResultsSummary()}
         </DialogContent>
         <DialogActions>
