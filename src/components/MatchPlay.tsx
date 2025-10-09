@@ -149,10 +149,8 @@ const MatchPlay: React.FC<MatchPlayProps> = ({ match, onBack, onShot, onUndo, on
   const handleFinishClick = () => {
     setFinishDialogOpen(true);
     setMatchEndTime(Date.now());
-  };
-
-  const handleFinishConfirm = () => {
-    // Capture the exact timestamp when match is finished
+    
+    // Send results to Google Sheets immediately when "Finish Match" is clicked
     const matchEndTimestamp = new Date().toISOString();
     
     // Připrav data pro Google Sheets
@@ -185,6 +183,9 @@ const MatchPlay: React.FC<MatchPlayProps> = ({ match, onBack, onShot, onUndo, on
     
     console.log('Sending to league:', leagueToSend, 'Timestamp:', matchEndTimestamp);
     sendResultsToSheet(results, leagueToSend, matchEndTimestamp);
+  };
+
+  const handleFinishConfirm = () => {
     setFinishDialogOpen(false);
     onBack();
   };
