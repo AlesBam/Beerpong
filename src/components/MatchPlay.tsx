@@ -16,7 +16,8 @@ import {
   TableHead,
   TableRow,
 } from '@mui/material';
-import { Match, Player } from '../types';
+import { Match, MatchTimer, Player } from '../types';
+import { addOvertime, remainingSeconds, startShotTimer, subtractMinute } from '../timer';
 
 interface MatchPlayProps {
   match: Match;
@@ -24,65 +25,42 @@ interface MatchPlayProps {
   onShot: (playerIndex: number, result: 'hit' | 'miss') => void;
   onUndo: () => void;
   onReset: () => void;
+  onTimerChange: (timer: MatchTimer) => void;
 }
 
-const MatchPlay: React.FC<MatchPlayProps> = ({ match, onBack, onShot, onUndo, onReset }) => {
-  const getInitialTime = (matchType: string): number => {
-    switch (matchType) {
-      case '1v1':
-        return 600; // 10 minutes
-      case '2v2':
-        return 900; // 15 minutes
-      case '3v3':
-        return 1200; // 20 minutes
-      default:
-        return 600; // Default to 10 minutes
-    }
-  };
+// Překresluje komponentu, aby se zobrazený čas posouval. Samotný čas se ale
+// počítá z match.timer.endsAt, ne z počtu tiků – zpožděný nebo zmeškaný tik
+// (zamčený mobil, tab na pozadí) se po návratu hned srovná.
+function useNow(enabled: boolean, intervalMs = 250): number {
+  const [now, setNow] = useState(() => Date.now());
 
+  useEffect(() => {
+    if (!enabled) return;
+    const tick = () => setNow(Date.now());
+    const interval = setInterval(tick, intervalMs);
+    document.addEventListener('visibilitychange', tick);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', tick);
+    };
+  }, [enabled, intervalMs]);
+
+  return now;
+}
+
+const MatchPlay: React.FC<MatchPlayProps> = ({ match, onBack, onShot, onUndo, onReset, onTimerChange }) => {
   const [finishDialogOpen, setFinishDialogOpen] = useState(false);
-  const [timeLeft, setTimeLeft] = useState<number>(getInitialTime(match.type));
-  const [isBaseTime, setIsBaseTime] = useState<boolean>(true);
-  const [baseTimeEndDialogOpen, setBaseTimeEndDialogOpen] = useState(false);
-  const [currentPlayerTimeLeft, setCurrentPlayerTimeLeft] = useState<number>(20);
   const [overtimeDialogOpen, setOvertimeDialogOpen] = useState(false);
-  const [matchStartTime, setMatchStartTime] = useState<number | null>(null);
   const [matchEndTime, setMatchEndTime] = useState<number | null>(null);
 
-  // Timer effect for base time
-  useEffect(() => {
-    if (!match.useTimer || !isBaseTime) return;
-
-    const timer = setInterval(() => {
-      setTimeLeft((prevTime) => {
-        if (prevTime <= 0) {
-          clearInterval(timer);
-          setBaseTimeEndDialogOpen(true);
-          return 0;
-        }
-        return prevTime - 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [match.useTimer, isBaseTime]);
-
-  // Timer effect for shot time
-  useEffect(() => {
-    if (!match.useTimer || isBaseTime) return;
-
-    const timer = setInterval(() => {
-      setCurrentPlayerTimeLeft((prevTime) => {
-        if (prevTime <= 0) {
-          clearInterval(timer);
-          return 0;
-        }
-        return prevTime - 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [match.useTimer, isBaseTime]);
+  const timer = match.useTimer ? match.timer : undefined;
+  const now = useNow(Boolean(timer));
+  const isBaseTime = !timer || timer.phase === 'base';
+  const secondsLeft = timer ? remainingSeconds(timer, now) : 0;
+  // Dialog není samostatný stav: je otevřený přesně tehdy, když základní čas došel.
+  const baseTimeEndDialogOpen = timer?.phase === 'base' && secondsLeft === 0;
+  // Začátek zápasu = první hod v historii (přežije obnovení stránky, nic dalšího se neukládá).
+  const matchStartTime = match.history.length > 0 ? Date.parse(match.history[0].timestamp) : null;
 
   // Format time as MM:SS
   const formatTime = (seconds: number): string => {
@@ -92,12 +70,10 @@ const MatchPlay: React.FC<MatchPlayProps> = ({ match, onBack, onShot, onUndo, on
   };
 
   const handleBaseTimeEndDialogClose = () => {
-    setBaseTimeEndDialogOpen(false);
-    setIsBaseTime(false);
-    setCurrentPlayerTimeLeft(20);
+    onTimerChange(startShotTimer(Date.now()));
   };
 
-  // URL tvého Google Apps Script webhooku
+  // Beerpong API (Vercel Function), které výsledky přeposílá do Google Apps Script → Google Sheets
   const GOOGLE_SHEET_WEBHOOK_URL = 'https://beerpong-api.vercel.app/api/beerpong';
 
   // Odeslání výsledků do Google Sheets
@@ -139,7 +115,7 @@ const MatchPlay: React.FC<MatchPlayProps> = ({ match, onBack, onShot, onUndo, on
     } catch (error) {
       console.error('Chyba při fetch do Google Sheets:', error);
       if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
-        alert('Nepodařilo se připojit k Google Sheets. Zkontrolujte prosím připojení k internetu a zda je webhook URL správně nastaven.');
+        alert('Nepodařilo se připojit k Google Sheets. Zkontrolujte prosím připojení k internetu a zda je URL API správně nastavená.');
       } else {
         alert('Nepodařilo se odeslat výsledky do Google Sheets. Zkontrolujte prosím konzoli pro více informací.');
       }
@@ -194,21 +170,16 @@ const MatchPlay: React.FC<MatchPlayProps> = ({ match, onBack, onShot, onUndo, on
     setFinishDialogOpen(false);
   };
 
-  const handleHit = (playerIndex: number) => {
-    if (matchStartTime === null) setMatchStartTime(Date.now());
-    onShot(playerIndex, 'hit');
-    if (!isBaseTime) {
-      setCurrentPlayerTimeLeft(20);
+  const handleShotClick = (playerIndex: number, result: 'hit' | 'miss') => {
+    onShot(playerIndex, result);
+    // Ve fázi "20 s na hod" každý hod resetuje odpočet
+    if (timer?.phase === 'shot') {
+      onTimerChange(startShotTimer(Date.now()));
     }
   };
 
-  const handleMiss = (playerIndex: number) => {
-    if (matchStartTime === null) setMatchStartTime(Date.now());
-    onShot(playerIndex, 'miss');
-    if (!isBaseTime) {
-      setCurrentPlayerTimeLeft(20);
-    }
-  };
+  const handleHit = (playerIndex: number) => handleShotClick(playerIndex, 'hit');
+  const handleMiss = (playerIndex: number) => handleShotClick(playerIndex, 'miss');
 
   const getPlayerStats = (playerIndex: number) => {
     const playerHistory = match.history.filter(h => h.playerIndex === playerIndex);
@@ -241,9 +212,6 @@ const MatchPlay: React.FC<MatchPlayProps> = ({ match, onBack, onShot, onUndo, on
   };
 
   const playersPerTeam = getPlayersPerTeam(match.type);
-  console.log('Match type:', match.type);
-  console.log('Players per team:', playersPerTeam);
-  console.log('All players:', match.players);
 
   // Ensure we have the correct number of players
   if (match.players.length !== playersPerTeam * 2) {
@@ -254,9 +222,6 @@ const MatchPlay: React.FC<MatchPlayProps> = ({ match, onBack, onShot, onUndo, on
   const team2Players = match.players.slice(playersPerTeam, playersPerTeam * 2);
   const team1Stats = getTeamStats(0, playersPerTeam);
   const team2Stats = getTeamStats(playersPerTeam, playersPerTeam * 2);
-
-  console.log('Team 1 Players:', team1Players);
-  console.log('Team 2 Players:', team2Players);
 
   const renderTeam = (players: Player[], startIndex: number, teamNumber: number, teamStats: { hits: number; total: number; accuracy: number }, teamName: string) => (
     <Box sx={{ flex: 1 }}>
@@ -430,7 +395,7 @@ const MatchPlay: React.FC<MatchPlayProps> = ({ match, onBack, onShot, onUndo, on
   };
 
   const handleOvertimeConfirm = () => {
-    setTimeLeft(prev => prev + 300); // Add 5 minutes (300 seconds)
+    if (timer) onTimerChange(addOvertime(timer, Date.now()));
     setOvertimeDialogOpen(false);
   };
 
@@ -447,8 +412,8 @@ const MatchPlay: React.FC<MatchPlayProps> = ({ match, onBack, onShot, onUndo, on
   };
 
   const handleSubtractMinute = () => {
-    if (isBaseTime) {
-      setTimeLeft(prev => Math.max(0, prev - 60));
+    if (timer?.phase === 'base') {
+      onTimerChange(subtractMinute(timer, Date.now()));
     }
   };
 
@@ -464,18 +429,20 @@ const MatchPlay: React.FC<MatchPlayProps> = ({ match, onBack, onShot, onUndo, on
       )}
       
       <Box sx={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center', mb: 2, gap: 1 }}>
-        <Typography 
-          variant="h5" 
-          sx={{ 
-            color: (isBaseTime ? timeLeft : currentPlayerTimeLeft) <= 10 ? 'error.main' : 'text.primary',
-            fontWeight: 'bold',
-            mr: 2,
-            minWidth: 70,
-            textAlign: 'center'
-          }}
-        >
-          {isBaseTime ? formatTime(timeLeft) : formatTime(currentPlayerTimeLeft)}
-        </Typography>
+        {timer && (
+          <Typography 
+            variant="h5" 
+            sx={{ 
+              color: secondsLeft <= 10 ? 'error.main' : 'text.primary',
+              fontWeight: 'bold',
+              mr: 2,
+              minWidth: 70,
+              textAlign: 'center'
+            }}
+          >
+            {formatTime(secondsLeft)}
+          </Typography>
+        )}
         {isBaseTime && match.useTimer && (
           <Button
             variant="contained"

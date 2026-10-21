@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Container, CssBaseline, ThemeProvider, createTheme, Box, Typography } from '@mui/material';
 import MatchSetup from './components/MatchSetup';
 import MatchPlay from './components/MatchPlay';
-import { Match, MatchType, LeagueType } from './types';
+import { Match, MatchType, LeagueType, MatchTimer } from './types';
+import { startBaseTimer } from './timer';
 import { Analytics } from "@vercel/analytics/react"
 
 const theme = createTheme({
@@ -19,12 +20,23 @@ const theme = createTheme({
 
 const STORAGE_KEY = 'beerPongMatch';
 
-function App() {
-  const [currentMatch, setCurrentMatch] = useState<Match | null>(() => {
-    // Initialize state from localStorage
+function loadSavedMatch(): Match | null {
+  try {
     const savedMatch = localStorage.getItem(STORAGE_KEY);
-    return savedMatch ? JSON.parse(savedMatch) : null;
-  });
+    if (!savedMatch) return null;
+    const match: Match = JSON.parse(savedMatch);
+    // Zápas uložený starší verzí appky nemá časovač – spustíme mu nový.
+    if (match.useTimer && !match.timer) {
+      match.timer = startBaseTimer(match.type, Date.now());
+    }
+    return match;
+  } catch {
+    return null;
+  }
+}
+
+function App() {
+  const [currentMatch, setCurrentMatch] = useState<Match | null>(loadSavedMatch);
 
   // Save to localStorage whenever match changes
   useEffect(() => {
@@ -46,6 +58,7 @@ function App() {
       team1Name,
       team2Name,
       useTimer,
+      timer: useTimer ? startBaseTimer(type, Date.now()) : undefined,
       premierLeague,
       selectedLeague
     };
@@ -64,50 +77,41 @@ function App() {
     setCurrentMatch(null);
   };
 
+  // Všechny změny zápasu jdou přes funkční updater (prev => next), protože hod
+  // a reset časovače přijdou ve stejném kliknutí a druhý update nesmí přepsat první.
+  // Updater musí být čistý (nic nemutovat): React.StrictMode ho v dev režimu volá dvakrát.
+  const changePlayerCount = (players: Match['players'], playerIndex: number, result: 'hit' | 'miss', delta: number) =>
+    players.map((player, index) =>
+      index !== playerIndex
+        ? player
+        : result === 'hit'
+          ? { ...player, hits: player.hits + delta }
+          : { ...player, misses: player.misses + delta }
+    );
+
   const handleShot = (playerIndex: number, result: 'hit' | 'miss') => {
-    if (!currentMatch) return;
-
-    const newHistory = [...currentMatch.history];
-    newHistory.push({
-      playerIndex,
-      result,
-      timestamp: new Date().toISOString(),
-    });
-
-    const updatedPlayers = [...currentMatch.players];
-    if (result === 'hit') {
-      updatedPlayers[playerIndex].hits += 1;
-    } else {
-      updatedPlayers[playerIndex].misses += 1;
-    }
-
-    setCurrentMatch({
-      ...currentMatch,
-      history: newHistory,
-      players: updatedPlayers,
+    const timestamp = new Date().toISOString();
+    setCurrentMatch(prev => prev && {
+      ...prev,
+      history: [...prev.history, { playerIndex, result, timestamp }],
+      players: changePlayerCount(prev.players, playerIndex, result, 1),
     });
   };
 
   const handleUndo = () => {
-    if (!currentMatch || currentMatch.history.length === 0) return;
-
-    const newHistory = [...currentMatch.history];
-    const lastShot = newHistory.pop();
-    
-    if (!lastShot) return;
-
-    const updatedPlayers = [...currentMatch.players];
-    if (lastShot.result === 'hit') {
-      updatedPlayers[lastShot.playerIndex].hits -= 1;
-    } else {
-      updatedPlayers[lastShot.playerIndex].misses -= 1;
-    }
-
-    setCurrentMatch({
-      ...currentMatch,
-      history: newHistory,
-      players: updatedPlayers,
+    setCurrentMatch(prev => {
+      if (!prev || prev.history.length === 0) return prev;
+      const lastShot = prev.history[prev.history.length - 1];
+      return {
+        ...prev,
+        history: prev.history.slice(0, -1),
+        players: changePlayerCount(prev.players, lastShot.playerIndex, lastShot.result, -1),
+      };
     });
+  };
+
+  const handleTimerChange = (timer: MatchTimer) => {
+    setCurrentMatch(prev => prev && { ...prev, timer });
   };
 
   return (
@@ -121,6 +125,7 @@ function App() {
               onBack={handleBack}
               onShot={handleShot}
               onUndo={handleUndo}
+              onTimerChange={handleTimerChange}
               onReset={handleReset}
             />
           ) : (
